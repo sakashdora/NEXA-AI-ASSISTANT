@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+  <title>NEXA AI — Multi-Model AI Assistant</title>
+  <meta name="description" content="Next-generation multi-model AI assistant. Chat with ChatGPT, Gemini, and Claude side by side." />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="NEXA AI" />
+  <meta property="og:description" content="Next-generation multi-model AI assistant." />
+  <meta property="og:type" content="website" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ================================================================
+     WELCOME SCREEN
+     ================================================================ -->
+<div id="welcome-screen">
+
+  <!-- Animated logo -->
+  <div class="welcome-content">
+    <div class="nexa-logo-anim">
+      <div class="logo-hexagon">
+        <span class="logo-n">N</span>
+      </div>
+      <div class="logo-rings">
+        <div class="ring ring-1"></div>
+        <div class="ring ring-2"></div>
+        <div class="ring ring-3"></div>
+      </div>
+    </div>
+
+    <h1 class="welcome-title">NEXA <span class="gradient-text">AI</span></h1>
+    <p class="welcome-subtitle">Next-generation multi-model AI assistant</p>
+
+    <div class="welcome-features">
+      <div class="feature-chip"><span>⚡</span> OpenAI</div>
+      <div class="feature-chip"><span>✦</span> Gemini</div>
+      <div class="feature-chip"><span>◈</span> Claude</div>
+    </div>
+
+    <button id="launch-btn" class="welcome-btn">
+      <span>Launch NEXA AI</span>
+      <div class="btn-shine"></div>
+    </button>
+  </div>
+
+  <!-- Floating particles -->
+  <div id="particles"></div>
+</div>
+
+<!-- ================================================================
+     MAIN APP
+     ================================================================ -->
+<div id="main-app" class="hidden">
+
+  <!-- -------- SIDEBAR -------- -->
+  <aside id="sidebar">
+
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="mini-hex sz-32">N</div>
+        <span class="sidebar-title">NEXA <span class="gradient-text">AI</span></span>
+      </div>
+      <button id="sidebar-close" class="icon-btn" title="Close sidebar">✕</button>
+    </div>
+
+    <!-- Mode toggle -->
+    <div class="section-label">AI MODE</div>
+    <div class="mode-toggle-wrap">
+      <div class="mode-toggle">
+        <div class="mode-opt active" id="mode-single">
+          <span>◎</span><span>Single AI</span>
+        </div>
+        <div class="mode-opt" id="mode-multi">
+          <span>⊞</span><span>Multi-AI</span>
+        </div>
+        <div class="mode-slider" id="mode-slider"></div>
+      </div>
+    </div>
+
+    <!-- Single AI selector -->
+    <div id="single-ai-selector">
+      <div class="section-label">SELECT AI</div>
+      <div class="ai-list">
+
+        <div class="ai-item active" data-ai="openai">
+          <div class="ai-avatar openai">⚡</div>
+          <div>
+            <div class="ai-name">ChatGPT</div>
+            <div class="ai-model">gpt-4o-mini</div>
+          </div>
+          <span class="ai-check">✓</span>
+        </div>
+
+        <div class="ai-item" data-ai="gemini">
+          <div class="ai-avatar gemini">✦</div>
+          <div>
+            <div class="ai-name">Gemini</div>
+            <div class="ai-model">gemini-1.5-flash</div>
+          </div>
+          <span class="ai-check">✓</span>
+        </div>
+
+        <div class="ai-item" data-ai="claude">
+          <div class="ai-avatar claude">◈</div>
+          <div>
+            <div class="ai-name">Claude</div>
+            <div class="ai-model">claude-3-haiku</div>
+          </div>
+          <span class="ai-check">✓</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- API Keys -->
+    <div class="section-label">API KEYS</div>
+    <div class="api-keys-section">
+
+      <div class="api-key-group">
+        <label class="key-label"><span>⚡</span> OpenAI Key</label>
+        <div class="key-wrap">
+          <input type="password" id="key-openai" class="key-input" placeholder="sk-..." autocomplete="off" />
+          <button class="key-eye" data-target="key-openai" title="Show/hide">👁</button>
+        </div>
+        <div class="key-status" id="status-openai"></div>
+      </div>
+
+      <div class="api-key-group">
+        <label class="key-label"><span>✦</span> Gemini Key</label>
+        <div class="key-wrap">
+          <input type="password" id="key-gemini" class="key-input" placeholder="AIza..." autocomplete="off" />
+          <button class="key-eye" data-target="key-gemini" title="Show/hide">👁</button>
+        </div>
+        <div class="key-status" id="status-gemini"></div>
+      </div>
+
+      <div class="api-key-group">
+        <label class="key-label"><span>◈</span> Claude Key</label>
+        <div class="key-wrap">
+          <input type="password" id="key-claude" class="key-input" placeholder="sk-ant-..." autocomplete="off" />
+          <button class="key-eye" data-target="key-claude" title="Show/hide">👁</button>
+        </div>
+        <div class="key-status" id="status-claude"></div>
+      </div>
+
+      <button id="save-keys-btn" class="save-btn">
+        <span>💾</span> Save API Keys
+      </button>
+
+    </div>
+
+    <!-- Chat History -->
+    <div class="section-label">HISTORY</div>
+    <div class="chat-history" id="history-list">
+      <div class="history-empty">No chat history yet</div>
+    </div>
+
+    <div class="sidebar-footer">
+      <button id="clear-sidebar-btn" class="danger-btn">
+        <span>🗑</span> Clear Chat
+      </button>
+    </div>
+
+  </aside>
+
+  <!-- -------- CHAT MAIN -------- -->
+  <main id="chat-main">
+
+    <!-- Header -->
+    <header id="chat-header">
+      <div class="hdr-left">
+        <button id="sidebar-toggle" class="icon-btn" title="Toggle sidebar">☰</button>
+        <div class="hdr-logo">
+          <div class="mini-hex sz-24">N</div>
+          <span class="hdr-logo-title">NEXA <span class="gradient-text">AI</span></span>
+        </div>
+      </div>
+
+      <div class="hdr-center">
+        <div class="mode-badge">
+          <span class="badge-dot single"></span>
+          <span id="mode-badge-text">Single AI — ChatGPT</span>
+        </div>
+      </div>
+
+      <div class="hdr-right">
+        <button id="clear-btn"  class="icon-btn" title="Clear chat">🗑</button>
+        <button id="tts-btn"    class="icon-btn" title="Toggle text-to-speech">🔊</button>
+      </div>
+    </header>
+
+    <!-- Messages area -->
+    <div id="messages">
+      <!-- Empty state injected by JS -->
+    </div>
+
+    <!-- Input area -->
+    <div id="input-area">
+      <div class="input-row">
+        <button id="voice-btn" class="input-action" title="Voice input">🎤</button>
+
+        <div
+          id="msg-input"
+          contenteditable="true"
+          role="textbox"
+          aria-multiline="true"
+          aria-label="Message input"
+          data-placeholder="Ask NEXA AI anything…"
+        ></div>
+
+        <button id="send-btn" title="Send message">▶</button>
+      </div>
+
+      <div class="input-footer">
+        <span class="input-hint">
+          Press <kbd>Enter</kbd> to send &nbsp;·&nbsp; <kbd>Shift+Enter</kbd> for new line
+        </span>
+        <div id="voice-indicator" class="voice-indicator hidden">
+          <span class="voice-pulse"></span>
+          <span>Listening…</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Script -->
+<script src="script.js"></script>
+</body>
+</html>
