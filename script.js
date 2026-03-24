@@ -1,5 +1,5 @@
 /**
- * NEXA AI — script.js
+ * NEXA AI — script.js  (FIXED)
  * Pure Vanilla JavaScript — no frameworks
  * Supports: OpenAI (ChatGPT), Google Gemini, Anthropic Claude
  */
@@ -11,13 +11,13 @@
 // =====================================================================
 
 const state = {
-  mode: "single",          // "single" | "multi"
-  selectedAI: "openai",    // "openai" | "gemini" | "claude"
+  mode: "single",
+  selectedAI: "openai",
   keys: { openai: "", gemini: "", claude: "" },
-  messages: [],            // [{role, content}] — conversation history
+  messages: [],
   isLoading: false,
   ttsEnabled: false,
-  chatHistory: [],         // [{id, title, messages}]
+  chatHistory: [],
   currentHistoryId: null,
   recognition: null,
   isRecording: false,
@@ -107,20 +107,15 @@ function launchApp() {
 function applyUIState() {
   const isSingle = state.mode === "single";
 
-  // Mode toggle
   $("mode-single").classList.toggle("active", isSingle);
   $("mode-multi").classList.toggle("active", !isSingle);
   $("mode-slider").classList.toggle("is-multi", !isSingle);
-
-  // Single AI selector visibility
   $("single-ai-selector").classList.toggle("hidden", !isSingle);
 
-  // AI item active state
   $$(".ai-item").forEach(el => {
     el.classList.toggle("active", el.dataset.ai === state.selectedAI);
   });
 
-  // Mode badge
   const badgeDot = document.querySelector(".badge-dot");
   badgeDot.className = "badge-dot " + (isSingle ? "single" : "multi");
 
@@ -129,7 +124,6 @@ function applyUIState() {
     ? `Single AI — ${names[state.selectedAI]}`
     : "Multi-AI — Comparing all models";
 
-  // Key inputs
   $("key-openai").value = state.keys.openai;
   $("key-gemini").value = state.keys.gemini;
   $("key-claude").value = state.keys.claude;
@@ -207,7 +201,6 @@ function rebuildFromHistory() {
     container.appendChild(emptyStateEl());
     return;
   }
-  // Simplified rebuild — show user messages only
   for (let i = 0; i < state.messages.length; i++) {
     const m = state.messages[i];
     if (m.role === "user") {
@@ -254,7 +247,6 @@ function emptyStateEl() {
 // =====================================================================
 
 function formatResponse(text) {
-  // Code blocks
   text = text.replace(/```(\w+)?\n?([\s\S]*?)```/g, (_, lang, code) => {
     const l = lang || "code";
     const escaped = escHtml(code.trim());
@@ -267,43 +259,28 @@ function formatResponse(text) {
     </div>`;
   });
 
-  // Inline code
-  text = text.replace(/`([^`]+)`/g,
-    '<span class="inline-code">$1</span>');
-
-  // Bold
+  text = text.replace(/`([^`]+)`/g, '<span class="inline-code">$1</span>');
   text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-  // Italic
   text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-
-  // Headings
   text = text.replace(/^### (.*?)$/gm,
     '<div style="font-size:.92em;font-weight:700;color:#e2e8f0;margin:.45em 0 .18em">$1</div>');
   text = text.replace(/^## (.*?)$/gm,
     '<div style="font-size:.98em;font-weight:700;color:#e2e8f0;margin:.55em 0 .22em">$1</div>');
   text = text.replace(/^# (.*?)$/gm,
     '<div style="font-size:1.05em;font-weight:800;color:#e2e8f0;margin:.65em 0 .28em">$1</div>');
-
-  // Bullet list
   text = text.replace(/^[-*] (.*?)$/gm,
     '<div style="display:flex;gap:.45em;margin:.12em 0"><span style="color:#4b5563;flex-shrink:0">•</span><span>$1</span></div>');
-
-  // Numbered list
   text = text.replace(/^\d+\. (.*?)$/gm,
     '<div style="display:flex;gap:.45em;margin:.12em 0"><span style="color:#4b5563;flex-shrink:0;min-width:1.1em">·</span><span>$1</span></div>');
-
-  // Paragraphs
   text = text.replace(/\n\n/g, '</p><p>');
   text = text.replace(/\n/g, '<br>');
   return `<p>${text}</p>`;
 }
 
-// AI metadata
 const AI_META = {
-  openai: { name: "ChatGPT",  icon: "⚡", cls: "openai" },
-  gemini: { name: "Gemini",   icon: "✦", cls: "gemini" },
-  claude: { name: "Claude",   icon: "◈", cls: "claude" },
+  openai: { name: "ChatGPT", icon: "⚡", cls: "openai" },
+  gemini: { name: "Gemini",  icon: "✦", cls: "gemini" },
+  claude: { name: "Claude",  icon: "◈", cls: "claude" },
 };
 
 function buildCardHTML(ai, content, isError) {
@@ -353,14 +330,12 @@ function wireCardButtons(row) {
       navigator.clipboard.writeText(text).then(() => showToast("Copied!", "ok"));
     });
   });
-
   row.querySelectorAll(".speak-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       const text = btn.closest(".ai-card").querySelector(".card-body").innerText;
       speak(text);
     });
   });
-
   row.querySelectorAll(".regen-btn").forEach(btn => {
     btn.addEventListener("click", () => regenCard(btn));
   });
@@ -380,7 +355,6 @@ async function handleSend(textOverride) {
   const text = textOverride || inputEl.textContent.trim();
   if (!text || state.isLoading) return;
 
-  // Hide empty state
   const es = $("empty-state");
   if (es) es.remove();
 
@@ -388,7 +362,6 @@ async function handleSend(textOverride) {
   $("send-btn").disabled = true;
   inputEl.textContent = "";
 
-  // User message
   const msgContainer = $("messages");
   const userRow = document.createElement("div");
   userRow.className = "msg-row";
@@ -396,12 +369,10 @@ async function handleSend(textOverride) {
   msgContainer.appendChild(userRow);
   scrollBottom();
 
-  // Which AIs to query
   const aisToQuery = state.mode === "multi"
     ? ["openai", "gemini", "claude"]
     : [state.selectedAI];
 
-  // AI response row
   const aiRow = document.createElement("div");
   aiRow.className = "msg-row";
   const responsesDiv = document.createElement("div");
@@ -411,21 +382,15 @@ async function handleSend(textOverride) {
   msgContainer.appendChild(aiRow);
   scrollBottom();
 
-  // Capture history before adding new user message
   const prevHistory = [...state.messages];
   state.messages.push({ role: "user", content: text });
 
-  // Fire all API calls in parallel
   const results = await Promise.all(aisToQuery.map(async ai => {
     const card = $(`typing-${ai}`);
     try {
       const reply = await callAPI(ai, text, prevHistory);
-      // Replace card
       card.outerHTML = buildCardHTML(ai, reply, false);
-      // Re-wire (after DOM update)
-      const newCard = responsesDiv.querySelector(`.ai-card:last-child`);
       wireCardButtons(aiRow);
-      // TTS for primary AI
       if (state.ttsEnabled && ai === aisToQuery[0]) speak(reply);
       return { ai, reply };
     } catch (err) {
@@ -435,10 +400,8 @@ async function handleSend(textOverride) {
     }
   }));
 
-  // Re-wire all after all DOM updates
   wireCardButtons(aiRow);
 
-  // Save primary response to history
   const primary = results.find(r => r.ai === aisToQuery[0]);
   if (primary?.reply) {
     state.messages.push({ role: "assistant", content: primary.reply, ai: aisToQuery[0] });
@@ -493,6 +456,7 @@ async function callAPI(ai, prompt, history) {
   }
 }
 
+// ---------- OpenAI ----------
 async function callOpenAI(prompt, history) {
   if (!state.keys.openai)
     throw new Error("OpenAI API key not set — add it in the sidebar.");
@@ -503,11 +467,10 @@ async function callOpenAI(prompt, history) {
     { role: "user", content: prompt },
   ];
 
-  // Try models in order of preference
-  const OPENAI_MODELS = ["gpt-4o-mini", "gpt-3.5-turbo"];
+  const MODELS = ["gpt-4o-mini", "gpt-3.5-turbo"];
   let lastError = null;
 
-  for (const model of OPENAI_MODELS) {
+  for (const model of MODELS) {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -520,7 +483,6 @@ async function callOpenAI(prompt, history) {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       const msg = err?.error?.message || `OpenAI error ${res.status}`;
-      // Model not available — try next
       if (err?.error?.code === "model_not_found" || res.status === 404) {
         lastError = new Error(msg);
         continue;
@@ -534,27 +496,23 @@ async function callOpenAI(prompt, history) {
   throw lastError || new Error("No OpenAI model available for your API key.");
 }
 
+// ---------- Gemini ----------
 async function callGemini(prompt, history) {
   if (!state.keys.gemini)
     throw new Error("Gemini API key not set — add it in the sidebar.");
 
-  // Build contents — must alternate user/model and start with user
-  const rawHistory = history.slice(-12);
+  // Build contents — no consecutive same-role turns allowed by Gemini
+  const rawHistory = history.slice(-10);
   const contents = [];
   for (const m of rawHistory) {
     const role = m.role === "assistant" ? "model" : "user";
-    // Avoid consecutive same-role turns (Gemini requirement)
     if (contents.length > 0 && contents[contents.length - 1].role === role) continue;
     contents.push({ role, parts: [{ text: m.content }] });
   }
-  // Ensure last turn before new prompt is "user" OR just append new user turn
-  if (contents.length > 0 && contents[contents.length - 1].role === "model") {
-    // fine — we'll add user next
-  }
   contents.push({ role: "user", parts: [{ text: prompt }] });
 
-  // Free-tier compatible models first, then fallbacks
-  const GEMINI_MODELS = [
+  // Free-tier models listed first — gemini-1.5-flash is the primary free-tier model
+  const MODELS = [
     "gemini-1.5-flash",
     "gemini-1.5-flash-8b",
     "gemini-1.5-flash-latest",
@@ -565,11 +523,29 @@ async function callGemini(prompt, history) {
     "gemini-2.0-flash",
   ];
 
+  function isSkippable(status, msg) {
+    const m = (msg || "").toLowerCase();
+    return (
+      status === 404 ||
+      status === 429 ||
+      m.includes("not found") ||
+      m.includes("quota exceeded") ||
+      m.includes("limit: 0") ||
+      m.includes("resource_exhausted") ||
+      m.includes("billingrequired") ||
+      m.includes("does not exist") ||
+      m.includes("is not supported")
+    );
+  }
+
   let lastError = null;
-  for (const model of GEMINI_MODELS) {
+
+  for (const model of MODELS) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${state.keys.gemini}`;
+    let res;
+
     try {
-      const res = await fetch(url, {
+      res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -581,38 +557,43 @@ async function callGemini(prompt, history) {
           generationConfig: { maxOutputTokens: 1500, temperature: 0.7 },
         }),
       });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        const msg = err?.error?.message || `Gemini error ${res.status}`;
-        // Skip to next model if: not found, quota=0 (free tier restricted), or billing required
-        const skipCodes = ["not found", "quota exceeded", "limit: 0", "billingrequired", "resource_exhausted"];
-        const shouldSkip = res.status === 404 || res.status === 429 ||
-          skipCodes.some(k => msg.toLowerCase().includes(k));
-        if (shouldSkip) {
-          lastError = new Error(msg);
-          continue;
-        }
-        throw new Error(msg);
-      }
-
-      const data = await res.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) return text;
-      lastError = new Error("Empty response from " + model);
+    } catch (networkErr) {
+      lastError = networkErr;
       continue;
-    } catch (e) {
-      const skipPhrases = ["not found", "404", "quota", "limit: 0"];
-      if (skipPhrases.some(p => e.message?.toLowerCase().includes(p))) {
-        lastError = e;
+    }
+
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      const msg = errBody?.error?.message || `Gemini error ${res.status}`;
+      if (isSkippable(res.status, msg)) {
+        lastError = new Error(msg);
         continue;
       }
-      throw e;
+      throw new Error(msg);
     }
+
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) {
+      lastError = new Error(`Empty response from ${model}`);
+      continue;
+    }
+
+    return text;
   }
-  throw lastError || new Error("No Gemini model is available for your free-tier API key. Try gemini-1.5-flash — it's free but has rate limits. Wait a minute and retry.");
+
+  // Give an actionable error message
+  const lastMsg = (lastError?.message || "").toLowerCase();
+  if (lastMsg.includes("limit: 0") || lastMsg.includes("quota") || lastMsg.includes("resource_exhausted")) {
+    throw new Error(
+      "Gemini quota exceeded on all models. Get a free key at aistudio.google.com/apikey " +
+      "(AI Studio keys include free gemini-1.5-flash access). If you already have one, wait 1 minute and retry."
+    );
+  }
+  throw lastError || new Error("All Gemini models failed. Check your API key.");
 }
 
+// ---------- Claude ----------
 async function callClaude(prompt, history) {
   if (!state.keys.claude)
     throw new Error("Claude API key not set — add it in the sidebar.");
@@ -622,15 +603,15 @@ async function callClaude(prompt, history) {
     { role: "user", content: prompt },
   ];
 
-  // Try Claude models in order of preference
-  const CLAUDE_MODELS = [
+  const MODELS = [
     "claude-haiku-4-5-20251001",
     "claude-3-5-haiku-20241022",
     "claude-3-haiku-20240307",
   ];
 
   let lastError = null;
-  for (const model of CLAUDE_MODELS) {
+
+  for (const model of MODELS) {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -755,10 +736,8 @@ function clearChat() {
 // =====================================================================
 
 function attachEvents() {
-  // Welcome
   $("launch-btn").addEventListener("click", launchApp);
 
-  // Sidebar toggle
   $("sidebar-toggle").addEventListener("click", () => {
     $("sidebar").classList.toggle("closed");
   });
@@ -766,7 +745,6 @@ function attachEvents() {
     $("sidebar").classList.add("closed");
   });
 
-  // Mode switch
   $("mode-single").addEventListener("click", () => {
     state.mode = "single";
     saveState();
@@ -778,7 +756,6 @@ function attachEvents() {
     applyUIState();
   });
 
-  // AI selection
   $$(".ai-item").forEach(item => {
     item.addEventListener("click", () => {
       state.selectedAI = item.dataset.ai;
@@ -787,7 +764,6 @@ function attachEvents() {
     });
   });
 
-  // Key eye toggles
   $$(".key-eye").forEach(btn => {
     btn.addEventListener("click", () => {
       const inp = document.getElementById(btn.dataset.target);
@@ -795,7 +771,6 @@ function attachEvents() {
     });
   });
 
-  // Save keys
   $("save-keys-btn").addEventListener("click", () => {
     state.keys.openai = $("key-openai").value.trim();
     state.keys.gemini = $("key-gemini").value.trim();
@@ -805,27 +780,22 @@ function attachEvents() {
     showToast("API keys saved!", "ok");
   });
 
-  // Clear chat
   $("clear-btn").addEventListener("click", clearChat);
   $("clear-sidebar-btn").addEventListener("click", clearChat);
 
-  // TTS toggle
   $("tts-btn").addEventListener("click", () => {
     state.ttsEnabled = !state.ttsEnabled;
     $("tts-btn").classList.toggle("tts-on", state.ttsEnabled);
     showToast(state.ttsEnabled ? "Text-to-speech on" : "Text-to-speech off");
   });
 
-  // Voice input
   $("voice-btn").addEventListener("click", () => {
     if (state.isRecording) stopRecording();
     else startRecording();
   });
 
-  // Send button
   $("send-btn").addEventListener("click", () => handleSend());
 
-  // Enter key in input
   $("msg-input").addEventListener("keydown", e => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -833,7 +803,6 @@ function attachEvents() {
     }
   });
 
-  // Suggestion chips (empty state)
   document.addEventListener("click", e => {
     if (e.target.classList.contains("suggestion")) {
       handleSend(e.target.dataset.text);
@@ -851,7 +820,6 @@ document.addEventListener("DOMContentLoaded", () => {
   setupVoice();
   attachEvents();
 
-  // Show empty state inside messages on load
   const c = $("messages");
   if (!c.querySelector("#empty-state")) {
     c.appendChild(emptyStateEl());
