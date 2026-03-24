@@ -503,62 +503,107 @@ async function callOpenAI(prompt, history) {
     { role: "user", content: prompt },
   ];
 
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${state.keys.openai}`,
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages,
-      max_tokens: 1500,
-      temperature: 0.7,
-    }),
-  });
+  // Try models in order of preference
+  const OPENAI_MODELS = ["gpt-4o-mini", "gpt-3.5-turbo"];
+  let lastError = null;
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `OpenAI error ${res.status}`);
+  for (const model of OPENAI_MODELS) {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${state.keys.openai}`,
+      },
+      body: JSON.stringify({ model, messages, max_tokens: 1500, temperature: 0.7 }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const msg = err?.error?.message || `OpenAI error ${res.status}`;
+      // Model not available — try next
+      if (err?.error?.code === "model_not_found" || res.status === 404) {
+        lastError = new Error(msg);
+        continue;
+      }
+      throw new Error(msg);
+    }
+
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || "";
   }
-
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content || "";
+  throw lastError || new Error("No OpenAI model available for your API key.");
 }
 
 async function callGemini(prompt, history) {
   if (!state.keys.gemini)
     throw new Error("Gemini API key not set — add it in the sidebar.");
 
-  const contents = [
-    ...history.slice(-12).map(m => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }],
-    })),
-    { role: "user", parts: [{ text: prompt }] },
+  // Build contents — must alternate user/model and start with user
+  const rawHistory = history.slice(-12);
+  const contents = [];
+  for (const m of rawHistory) {
+    const role = m.role === "assistant" ? "model" : "user";
+    // Avoid consecutive same-role turns (Gemini requirement)
+    if (contents.length > 0 && contents[contents.length - 1].role === role) continue;
+    contents.push({ role, parts: [{ text: m.content }] });
+  }
+  // Ensure last turn before new prompt is "user" OR just append new user turn
+  if (contents.length > 0 && contents[contents.length - 1].role === "model") {
+    // fine — we'll add user next
+  }
+  contents.push({ role: "user", parts: [{ text: prompt }] });
+
+  // Try models in order of preference
+  const GEMINI_MODELS = [
+    "gemini-2.0-flash",
+    "gemini-1.5-flash-latest",
+    "gemini-1.5-pro-latest",
+    "gemini-pro",
   ];
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.keys.gemini}`;
+  let lastError = null;
+  for (const model of GEMINI_MODELS) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${state.keys.gemini}`;
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents,
+          systemInstruction: {
+            role: "user",
+            parts: [{ text: "You are NEXA AI, a helpful and knowledgeable assistant. Be concise and clear." }],
+          },
+          generationConfig: { maxOutputTokens: 1500, temperature: 0.7 },
+        }),
+      });
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents,
-      systemInstruction: {
-        parts: [{ text: "You are NEXA AI, a helpful and knowledgeable assistant. Be concise and clear." }],
-      },
-      generationConfig: { maxOutputTokens: 1500, temperature: 0.7 },
-    }),
-  });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const msg = err?.error?.message || `Gemini error ${res.status}`;
+        // If model not found, try next
+        if (res.status === 404 || msg.toLowerCase().includes("not found")) {
+          lastError = new Error(msg);
+          continue;
+        }
+        throw new Error(msg);
+      }
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `Gemini error ${res.status}`);
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) return text;
+      // Empty response — try next model
+      lastError = new Error("Empty response from " + model);
+      continue;
+    } catch (e) {
+      if (e.message && (e.message.includes("not found") || e.message.includes("404"))) {
+        lastError = e;
+        continue;
+      }
+      throw e;
+    }
   }
-
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  throw lastError || new Error("No Gemini model available for your API key.");
 }
 
 async function callClaude(prompt, history) {
@@ -570,29 +615,45 @@ async function callClaude(prompt, history) {
     { role: "user", content: prompt },
   ];
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": state.keys.claude,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
-    body: JSON.stringify({
-      model: "claude-3-haiku-20240307",
-      max_tokens: 1500,
-      system: "You are NEXA AI, a helpful and knowledgeable assistant. Be concise and clear.",
-      messages,
-    }),
-  });
+  // Try Claude models in order of preference
+  const CLAUDE_MODELS = [
+    "claude-haiku-4-5-20251001",
+    "claude-3-5-haiku-20241022",
+    "claude-3-haiku-20240307",
+  ];
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `Claude error ${res.status}`);
+  let lastError = null;
+  for (const model of CLAUDE_MODELS) {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": state.keys.claude,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 1500,
+        system: "You are NEXA AI, a helpful and knowledgeable assistant. Be concise and clear.",
+        messages,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const msg = err?.error?.message || `Claude error ${res.status}`;
+      if (res.status === 404 || msg.toLowerCase().includes("not found")) {
+        lastError = new Error(msg);
+        continue;
+      }
+      throw new Error(msg);
+    }
+
+    const data = await res.json();
+    return data.content?.[0]?.text || "";
   }
-
-  const data = await res.json();
-  return data.content?.[0]?.text || "";
+  throw lastError || new Error("No Claude model available for your API key.");
 }
 
 // =====================================================================
