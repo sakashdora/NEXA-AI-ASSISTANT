@@ -553,12 +553,16 @@ async function callGemini(prompt, history) {
   }
   contents.push({ role: "user", parts: [{ text: prompt }] });
 
-  // Try models in order of preference
+  // Free-tier compatible models first, then fallbacks
   const GEMINI_MODELS = [
-    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-8b",
     "gemini-1.5-flash-latest",
-    "gemini-1.5-pro-latest",
+    "gemini-1.5-flash-8b-latest",
+    "gemini-1.0-pro",
     "gemini-pro",
+    "gemini-2.0-flash-lite",
+    "gemini-2.0-flash",
   ];
 
   let lastError = null;
@@ -581,8 +585,11 @@ async function callGemini(prompt, history) {
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         const msg = err?.error?.message || `Gemini error ${res.status}`;
-        // If model not found, try next
-        if (res.status === 404 || msg.toLowerCase().includes("not found")) {
+        // Skip to next model if: not found, quota=0 (free tier restricted), or billing required
+        const skipCodes = ["not found", "quota exceeded", "limit: 0", "billingrequired", "resource_exhausted"];
+        const shouldSkip = res.status === 404 || res.status === 429 ||
+          skipCodes.some(k => msg.toLowerCase().includes(k));
+        if (shouldSkip) {
           lastError = new Error(msg);
           continue;
         }
@@ -592,18 +599,18 @@ async function callGemini(prompt, history) {
       const data = await res.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (text) return text;
-      // Empty response — try next model
       lastError = new Error("Empty response from " + model);
       continue;
     } catch (e) {
-      if (e.message && (e.message.includes("not found") || e.message.includes("404"))) {
+      const skipPhrases = ["not found", "404", "quota", "limit: 0"];
+      if (skipPhrases.some(p => e.message?.toLowerCase().includes(p))) {
         lastError = e;
         continue;
       }
       throw e;
     }
   }
-  throw lastError || new Error("No Gemini model available for your API key.");
+  throw lastError || new Error("No Gemini model is available for your free-tier API key. Try gemini-1.5-flash — it's free but has rate limits. Wait a minute and retry.");
 }
 
 async function callClaude(prompt, history) {
